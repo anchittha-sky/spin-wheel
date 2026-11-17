@@ -390,27 +390,28 @@ function spin(){
 }
 function setBusy(b){$('#spinBtn').disabled=b;$('#hub').disabled=b}
 
-let pendingWin=null;
+let pendingWin=null,pendingReset=false;
 function showResult(item){
   const w=cur();pendingWin=item;
-  w.history.unshift(item.text);w.history=w.history.slice(0,8);save();
+  w.history.unshift(item.text);w.history=w.history.slice(0,8);
   $('#resWin').textContent=item.text;
-  if(w.removeWinner){
-    const left=active(w).length-1;
-    $('#resNote').textContent=left>0?`ตัวเลือกนี้จะถูกนำออก (เหลืออีก ${left})`:'ครบทุกตัวเลือกแล้ว! จะเริ่มรอบใหม่ 🎉';
-  } else $('#resNote').textContent='';
+  $('#resNote').textContent='';
+  if(w.removeWinner&&w.items.some(i=>i.id===item.id)){
+    // remove right away, so closing the app without tapping a button never repeats it
+    if(!w.used.includes(item.id)) w.used.push(item.id);
+    const left=active(w).length;
+    if(left===0){w.used=[];pendingReset=true;$('#resNote').textContent='ครบทุกตัวเลือกแล้ว! เริ่มรอบใหม่ 🎉'}
+    else $('#resNote').textContent=`ตัวเลือกนี้ถูกนำออกแล้ว (เหลืออีก ${left})`;
+  }
+  save();
   open('#ovResult');chime();confetti();
   try{navigator.vibrate&&navigator.vibrate(60)}catch(e){}
   renderHistory();
 }
 function settleResult(){
   if(!pendingWin) return;
-  const w=cur(),item=pendingWin;pendingWin=null;
-  if(w.removeWinner&&w.items.some(i=>i.id===item.id)){
-    if(!w.used.includes(item.id)) w.used.push(item.id);
-    if(active(w).length===0){w.used=[];toast('ครบทุกตัวแล้ว ดึงตัวเลือกกลับมาเริ่มรอบใหม่ 🎉')}
-    save();
-  }
+  pendingWin=null;
+  if(pendingReset){pendingReset=false;toast('ครบทุกตัวแล้ว ดึงตัวเลือกกลับมาเริ่มรอบใหม่ 🎉')}
   close('#ovResult');renderMain();
 }
 $('#resOk').onclick=settleResult;
